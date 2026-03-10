@@ -88,8 +88,25 @@ You have successfully integrated Torrentio with Prowlarr. Happy searching and do
 
 The indexer can be validated using the schema from Cardigann.
 
+### Option 1: Node.js / AJV (existing)
 ```js
 ajv test -d ".\Custom\torrentio.yml" -s ".\v9-schema.json" --valid --all-errors -c ajv-formats --spec=draft2019
 ```
 
-Note that the following npm packages are required `ajv-cli-servarr ajv-formats` These can be installed globally on your system with `npm install -g ajv-cli-servarr ajv-formats`
+Note that the following npm packages are required: `ajv-cli-servarr` and `ajv-formats`. They can be installed globally on your system with:
+
+```bash
+npm install -g ajv-cli-servarr ajv-formats
+```
+
+### Option 2: Python (included)
+A small Python helper script is included in this repo for schema validation.
+
+To run it:
+
+```bash
+python validate_schema.py
+```
+
+This uses the same `v9-schema.json` and will print `VALID` if the indexer definition matches the schema.
+
