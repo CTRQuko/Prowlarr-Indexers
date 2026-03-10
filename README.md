@@ -4,21 +4,31 @@ This README will guide you through the process of adding Torrentio as a custom i
 
 ## Docker Install
 
-1. **Checkout this repo via git clone**
+1. **Clone this repository (or your fork)**
 
-   ```
-   git clone https://github.com/dreulavelle/Prowlarr-Indexers.git 
+   ```bash
+   git clone https://github.com/ctrquko/Prowlarr-Indexers.git
+   # or, if you want the upstream version:
+   # git clone https://github.com/dreulavelle/Prowlarr-Indexers.git
    ```
 
-2. **change directory to the newly git cloned directory**
+2. **Change into the repository directory**
 
-   ```
+   ```bash
    cd Prowlarr-Indexers
    ```
 
-3. **Start Docker**
+3. **(Optional) Apply a local patch**
 
+   If you have a patch file (e.g. `torrentio-update.patch`), apply it now:
+
+   ```bash
+   git apply torrentio-update.patch
    ```
+
+4. **Start Docker**
+
+   ```bash
    docker compose up -d
    ```
 
