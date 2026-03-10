@@ -66,7 +66,7 @@ search:
   headers:
     User-Agent:
       [
-        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/109.0",
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
       ]
   paths:
     - path: "{{ if .Query.IMDBID }}{{ .Config.default_opts }}|{{ .Config.debrid_provider }}={{ .Config.debrid_provider_key }}/stream/movie/{{ .Query.IMDBID }}.json{{ else }}providers=rarbg,1337x|sort=size|qualityfilter=brremux,hdrall,dolbyvision,4k,720p,480p,other,scr,cam,unknown|{{ .Config.debrid_provider }}={{ .Config.debrid_provider_key }}/stream/movie/{{ .Config.validate_imdb_movie }}.json{{ end }}"
@@ -104,17 +104,25 @@ search:
           args: "\\b(S\\d+(?:E\\d+)?)\\b"
     category:
       text: "{{ if .Result.category_is_tv_show }}TV{{ else }}Movies{{ end }}"
+    # FIX: AllDebrid (y RealDebrid) devuelven URL-only sin campo infoHash.
+    # El hash de 40 caracteres hex está embebido en la URL del stream:
+    #   RD:  .../resolve/realdebrid/<KEY>/<HASH>/null/0/filename
+    #   AD:  .../alldebrid/<KEY>/<HASH>/filename/null/filename
+    # Extraemos el hash directamente desde el campo 'url' con regexp.
     infohash:
-      selector: infoHash
+      selector: url
+      filters:
+        - name: regexp
+          args: "/([0-9a-f]{40})(?:/|$)"
     seeders:
       selector: title
       filters:
         - name: regexp
-          args: "👤 (\\d+)"
+          args: "\\uD83D\\uDC64 (\\d+)"
     leechers:
       text: "0"
     size:
       selector: title
       filters:
         - name: regexp
-          args: "💾 (\\d+(?:\\.\\d+)? [KMGT]B)"
+          args: "\\b(\\d+(?:\\.\\d+)? (?:G|M)B)\\b"
