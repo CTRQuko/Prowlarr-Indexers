@@ -1,0 +1,133 @@
+diff --git a/Custom/torrentio.yml b/Custom/torrentio.yml
+index f038ab8..c16bae1 100644
+--- a/Custom/torrentio.yml
++++ b/Custom/torrentio.yml
+@@ -66,7 +66,7 @@ search:
+   headers:
+     User-Agent:
+       [
+-        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/109.0",
++        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+       ]
+   paths:
+     - path: "{{ if .Query.IMDBID }}{{ .Config.default_opts }}|{{ .Config.debrid_provider }}={{ .Config.debrid_provider_key }}/stream/movie/{{ .Query.IMDBID }}.json{{ else }}providers=rarbg,1337x|sort=size|qualityfilter=brremux,hdrall,dolbyvision,4k,720p,480p,other,scr,cam,unknown|{{ .Config.debrid_provider }}={{ .Config.debrid_provider_key }}/stream/movie/{{ .Config.validate_imdb_movie }}.json{{ end }}"
+@@ -104,17 +104,25 @@ search:
+           args: "\\b(S\\d+(?:E\\d+)?)\\b"
+     category:
+       text: "{{ if .Result.category_is_tv_show }}TV{{ else }}Movies{{ end }}"
++    # FIX: AllDebrid (y RealDebrid) devuelven URL-only sin campo infoHash.
++    # El hash de 40 caracteres hex está embebido en la URL del stream:
++    #   RD:  .../resolve/realdebrid/<KEY>/<HASH>/null/0/filename
++    #   AD:  .../alldebrid/<KEY>/<HASH>/filename/null/filename
++    # Extraemos el hash directamente desde el campo 'url' con regexp.
+     infohash:
+-      selector: infoHash
++      selector: url
++      filters:
++        - name: regexp
++          args: "/([0-9a-f]{40})(?:/|$)"
+     seeders:
+       selector: title
+       filters:
+         - name: regexp
+-          args: "👤 (\\d+)"
++          args: "\\uD83D\\uDC64 (\\d+)"
+     leechers:
+       text: "0"
+     size:
+       selector: title
+       filters:
+         - name: regexp
+-          args: "💾 (\\d+(?:\\.\\d+)? [KMGT]B)"
++          args: "\\b(\\d+(?:\\.\\d+)? (?:G|M)B)\\b"
+diff --git a/README.md b/README.md
+index 82727ab..686749a 100644
+--- a/README.md
++++ b/README.md
+@@ -88,8 +88,25 @@ You have successfully integrated Torrentio with Prowlarr. Happy searching and do
+ 
+ The indexer can be validated using the schema from Cardigann.
+ 
++### Option 1: Node.js / AJV (existing)
+ ```js
+ ajv test -d ".\Custom\torrentio.yml" -s ".\v9-schema.json" --valid --all-errors -c ajv-formats --spec=draft2019
+ ```
+ 
+-Note that the following npm packages are required `ajv-cli-servarr ajv-formats` These can be installed globally on your system with `npm install -g ajv-cli-servarr ajv-formats`
++Note that the following npm packages are required: `ajv-cli-servarr` and `ajv-formats`. They can be installed globally on your system with:
++
++```bash
++npm install -g ajv-cli-servarr ajv-formats
++```
++
++### Option 2: Python (included)
++A small Python helper script is included in this repo for schema validation.
++
++To run it:
++
++```bash
++python validate_schema.py
++```
++
++This uses the same `v9-schema.json` and will print `VALID` if the indexer definition matches the schema.
++
+diff --git a/docs/torrentio-changes.md b/docs/torrentio-changes.md
+new file mode 100644
+index 0000000..ddd8736
+--- /dev/null
++++ b/docs/torrentio-changes.md
+@@ -0,0 +1,27 @@
++# Torrentio Indexer Update (Prowlarr)
++
++## ¿Qué se cambió?
++
++### 1) Mejoras en la configuración del indexer
++- Se agregaron campos de tipo `info` para que la UI de Prowlarr muestre:
++  - Que la clave de Real-Debrid es obligatoria (`rdkey_label`)
++  - Qué IDs de IMDB usar para validar el indexer en Sonarr/Radarr (`validation_label`, `validate_imdb_movie_label`)
++- Se ajustaron las etiquetas y valores por defecto para que coincidan con la versión que funciona en la práctica (por ejemplo, `tt9288030` para validar TV).
++
++### 2) Compatibilidad con AllDebrid / RealDebrid (hash de torrent en URL)
++- Torrentio, cuando se usa con proveedores como AllDebrid/RealDebrid, puede devolver streams donde **no hay campo `infoHash`**, solo una URL.
++- Se agregó una extracción (`regexp`) desde `url` para obtener el hash de 40 caracteres y alimentar correctamente a Prowlarr.
++
++### 3) Otros ajustes
++- Se añadió el campo `leechers` con valor estático `0` para evitar que el indexer devuelva un valor vacío (algunos clientes esperan el campo).
++
++## Cómo validar localmente
++1. Validar el YAML contra el esquema v9:
++   ```bash
++   python validate_schema.py
++   ```
++2. Si necesitas comprobar que la configuración retorna datos válidos, lanza un contenedor de Prowlarr apuntando a este archivo (`torrentio.yml`) y prueba la integración en la UI.
++
++## Próximos pasos (Docker)
++- Montar el archivo `torrentio.yml` dentro del contenedor de Prowlarr (o reemplazarlo) y reiniciar Prowlarr.
++- En Prowlarr, agregar el indexer “Torrentio” y verificar que los tests de conexión / búsqueda funcionen.
+diff --git a/validate_schema.py b/validate_schema.py
+new file mode 100644
+index 0000000..31f87ab
+--- /dev/null
++++ b/validate_schema.py
+@@ -0,0 +1,21 @@
++import json
++import pathlib
++
++import jsonschema
++import yaml
++
++schema_path = pathlib.Path(r"c:\homelab\docker\prowlarr\Prowlarr-Indexers\v9-schema.json")
++file_path = pathlib.Path(r"c:\homelab\docker\torrentio.yml")
++
++data = yaml.safe_load(file_path.read_text())
++schema = json.loads(schema_path.read_text())
++
++try:
++    jsonschema.validate(instance=data, schema=schema)
++    print('VALID')
++except jsonschema.exceptions.ValidationError as e:
++    print('INVALID')
++    print(e.message)
++    print('path:', list(e.path))
++    print('schema_path:', list(e.schema_path))
++    raise
