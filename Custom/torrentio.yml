@@ -56,11 +56,11 @@ settings:
   - name: validate_imdb_movie
     type: text
     label: IMDB ID of Movie to use for Radarr validation (must exist in indexer)
-    default: "tt0137523" # Fight Club
+    default: ""
   - name: validate_imdb_tv
     type: text
     label: IMDB ID TV show to use for Sonarr validation (must exist in indexer)
-    default: "tt9288030" # Reacher S02E01
+    default: ""
 
 search:
   headers:
