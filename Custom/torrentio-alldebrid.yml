@@ -1,0 +1,113 @@
+---
+id: torrentio-alldebrid
+name: Torrentio (AllDebrid)
+description: "Torrentio Indexer (AllDebrid-only configuration)"
+language: en-US
+type: public
+encoding: UTF-8
+followredirect: false
+testlinktorrent: false
+requestDelay: 2
+links:
+  - https://torrentio.strem.fun/
+
+caps:
+  categories:
+    Movies: Movies
+    TV: TV
+
+  modes:
+    search: [q]
+    movie-search: [q, imdbid]
+    tv-search: [q, imdbid, season, ep]
+  allowrawsearch: false
+
+settings:
+  - name: default_opts
+    type: text
+    label: Torrentio Options
+    default: "providers=alldebrid|sort=qualitysize|qualityfilter=scr,cam"
+  - name: alldebrid_api_key
+    type: text
+    label: AllDebrid API Key
+    default: ""
+  - name: validation_label
+    type: info
+    label: Validation settings optional
+  - name: validate_imdb_movie_label
+    type: info
+    label: The following help to validate an indexer in Sonarr by confirming that the show returns results
+  - name: validate_imdb_movie
+    type: text
+    label: IMDB ID of Movie to use for Radarr validation (must exist in indexer)
+    default: ""
+  - name: validate_imdb_tv
+    type: text
+    label: IMDB ID TV show to use for Sonarr validation (must exist in indexer)
+    default: ""
+
+search:
+  headers:
+    User-Agent:
+      [
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+      ]
+  paths:
+    - path: "{{ if .Query.IMDBID }}{{ .Config.default_opts }}|alldebrid={{ .Config.alldebrid_api_key }}/stream/movie/{{ .Query.IMDBID }}.json{{ else }}{{ .Config.default_opts }}|alldebrid={{ .Config.alldebrid_api_key }}/stream/movie/{{ .Config.validate_imdb_movie }}.json{{ end }}"
+      method: get
+      response:
+        type: json
+        noResultsMessage: '"streams": []'
+      categories: [Movies]
+    - path: "{{ if .Query.IMDBID }}{{ .Config.default_opts }}|alldebrid={{ .Config.alldebrid_api_key }}/stream/series/{{ .Query.IMDBID }}:{{ if .Query.Season }}{{ .Query.Season }}{{ else }}1{{ end }}:{{ if .Query.Ep }}{{ .Query.Ep }}{{ else }}1{{ end }}.json{{ else }}{{ .Config.default_opts }}|alldebrid={{ .Config.alldebrid_api_key }}/stream/series/{{ .Config.validate_imdb_tv }}:{{ if .Query.Season }}{{ .Query.Season }}{{ else }}1{{ end }}:{{ if .Query.Ep }}{{ .Query.Ep }}{{ else }}1{{ end }}.json{{ end }}"
+      method: get
+      response:
+        type: json
+        noResultsMessage: '"streams": []'
+      categories: [TV]
+
+  rows:
+    selector: streams
+    missingAttributeEqualsNoResults: true
+
+  fields:
+    category_is_tv_show:
+      selector: title
+      filters:
+        - name: regexp
+          args: "\\b([Ss]\\d+(?:[Ee]\\d+)?)\\b"
+    title:
+      selector: title
+      filters:
+        - name: split
+          args: ["\n", 0]
+    year:
+      selector: title
+      filters:
+        - name: regexp
+          args: "(\\b(19|20)\\d\\d\\b)"
+    category:
+      text: "{{ if .Result.category_is_tv_show }}TV{{ else }}Movies{{ end }}"
+    # FIX: AllDebrid devuelve URL-only sin campo infoHash.
+    # El hash de 40 caracteres hex está embebido en la URL del stream:
+    #   .../alldebrid/<KEY>/<HASH>/filename/null/filename
+    # Extraemos el hash directamente desde el campo 'url' con regexp.
+    infohash:
+      selector: url
+      filters:
+        - name: regexp
+          args: "/([0-9a-f]{40})(?:/|$)"
+    seeders:
+      selector: title
+      filters:
+        - name: regexp
+          args: "\\uD83D\\uDC64 (\\d+)"
+    leechers:
+      text: "0"
+    size:
+      selector: title
+      filters:
+        - name: regexp
+          args: "\\b(\\d+(?:\\.\\d+)? (?:G|M)B)\\b"
+    download:
+      selector: url

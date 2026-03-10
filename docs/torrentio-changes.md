@@ -24,5 +24,6 @@
 2. Si necesitas comprobar que la configuración retorna datos válidos, lanza un contenedor de Prowlarr apuntando a este archivo (`torrentio.yml`) y prueba la integración en la UI.
 
 ## Próximos pasos (Docker)
-- Montar el archivo `torrentio.yml` dentro del contenedor de Prowlarr (o reemplazarlo) y reiniciar Prowlarr.
+- Montar el archivo `torrentio.yml` (o `Custom/torrentio-alldebrid.yml` para solo AllDebrid) dentro del contenedor de Prowlarr y reiniciar Prowlarr.
 - En Prowlarr, agregar el indexer “Torrentio” y verificar que los tests de conexión / búsqueda funcionen.
+- **Importante**: Torrentio solo devuelve resultados relevantes cuando se consulta con un **IMDB ID**. Para buscar por título necesitas convertirlo a IMDB (por ejemplo usando https://www.imdb.com/find?q=<título> o una API como TMDB/OMDB).
